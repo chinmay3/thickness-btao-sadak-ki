@@ -4,7 +4,7 @@ import cv2
 import matplotlib.pyplot as plt
 from osgeo import gdal
 from shapely.geometry import Point
-import os
+import io
 
 # Function to process raster image and detect edges, contours, and corner points
 def process_raster_image(tif_path):
@@ -60,7 +60,7 @@ def process_raster_image(tif_path):
         y_geo = geotransform[3] + point[0] * geotransform[4] + point[1] * geotransform[5]
         corner_points_geocoords.append((x_geo, y_geo))
 
-    return corner_points_geocoords, corner_points_filtered
+    return image, corner_points_geocoords, corner_points_filtered
 
 # Function to calculate Euclidean distance
 def calculate_euclidean_distance(coords, point1_index, point2_index):
@@ -76,14 +76,16 @@ def main():
     # Upload an image
     uploaded_file = st.file_uploader("Upload a road network image (PNG, TIFF)", type=["png", "tiff"])
     if uploaded_file is not None:
-        # Save uploaded file to a temporary location
-        with open("uploaded_image.png", "wb") as f:
-            f.write(uploaded_file.getbuffer())
+        # Process the uploaded image
+        img_bytes = uploaded_file.read()
+        image_path = "uploaded_image.png"
+        with open(image_path, "wb") as f:
+            f.write(img_bytes)
 
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+        st.image(img_bytes, caption="Uploaded Image", use_column_width=True)
 
         # Process the image
-        corner_points_geocoords, corner_points_filtered = process_raster_image("uploaded_image.png")
+        image, corner_points_geocoords, corner_points_filtered = process_raster_image(image_path)
 
         if corner_points_geocoords:
             # Display corner points on the image
@@ -105,7 +107,7 @@ def main():
             # Display road network with corner points
             st.subheader("Road Network with Corner Points")
             fig, ax = plt.subplots(figsize=(8, 8))
-            ax.imshow(corner_points_filtered, cmap='gray')
+            ax.imshow(image, cmap='gray')
             corner_points = np.array(corner_points_filtered)
             ax.scatter(corner_points[:, 0], corner_points[:, 1], c='r', s=50)
             for i, point in enumerate(corner_points_filtered, start=1):
